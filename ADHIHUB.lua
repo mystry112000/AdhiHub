@@ -489,6 +489,76 @@ local function createSlider(parent, text, min, max, default, callback)
     }
 end
 
+local function createPasswordInput(parent, placeholder, callback)
+    local realText = ""
+    local masked = ""
+
+    local frame = create("Frame", {
+        Size = UDim2.new(1, 0, 0, 38), BackgroundColor3 = Theme.Card,
+        BorderSizePixel = 0, Parent = parent,
+    })
+    addCorner(frame, 6)
+    addStroke(frame, Theme.Border, 0.5)
+
+    local displayLabel = create("TextLabel", {
+        Size = UDim2.new(1, -16, 1, 0), Position = UDim2.new(0, 8, 0, 0),
+        BackgroundTransparency = 1, Text = placeholder,
+        TextColor3 = Theme.TextMuted, Font = Enum.Font.Gotham,
+        TextSize = 14, TextXAlignment = Enum.TextXAlignment.Left,
+        Parent = frame,
+    })
+
+    local hiddenInput = create("TextBox", {
+        Size = UDim2.new(1, 0, 1, 0), BackgroundTransparency = 1,
+        Text = "", TextColor3 = Theme.Text, Font = Enum.Font.Gotham,
+        TextSize = 14, ClearTextOnFocus = false, Parent = frame,
+    })
+
+    hiddenInput.Focused:Connect(function()
+        if realText == "" then
+            displayLabel.Text = ""
+        end
+    end)
+
+    hiddenInput.FocusLost:Connect(function()
+        if realText == "" then
+            displayLabel.Text = placeholder
+            displayLabel.TextColor3 = Theme.TextMuted
+        end
+        if callback then callback(realText) end
+    end)
+
+    hiddenInput:GetPropertyChangedSignal("Text"):Connect(function()
+        local inputText = hiddenInput.Text
+        if #inputText > #realText then
+            local newChar = inputText:sub(#realText + 1)
+            realText = realText .. newChar
+        elseif #inputText < #realText then
+            realText = realText:sub(1, #inputText)
+        end
+        hiddenInput.Text = ""
+        if realText ~= "" then
+            masked = string.rep("*", #realText)
+            displayLabel.Text = masked
+            displayLabel.TextColor3 = Theme.Text
+        else
+            displayLabel.Text = placeholder
+            displayLabel.TextColor3 = Theme.TextMuted
+        end
+    end)
+
+    return {
+        Get = function() return realText end,
+        Clear = function()
+            realText = ""
+            masked = ""
+            hiddenInput.Text = ""
+            displayLabel.Text = placeholder
+            displayLabel.TextColor3 = Theme.TextMuted
+        end,
+    }
+end
+
 local function createLabel(parent, text)
     return create("TextLabel", {
         Size = UDim2.new(1, 0, 0, 22), BackgroundTransparency = 1,
@@ -525,32 +595,106 @@ local toggleDefaultProps = createToggle(SavePage, "Save Default Properties", fal
 createSection(SavePage, "SAVE")
 
 createButton(SavePage, "SAVE GAME", Theme.Accent, function()
-    local rawScript = game:HttpGet("https://raw.githubusercontent.com/luau/UniversalSynSaveInstance/main/saveinstance.lua", true)
-    loadstring(rawScript)()
-
-    local instances = {}
-    if toggleWorkspace.Get() then table.insert(instances, workspace) end
-    if toggleLighting.Get() then table.insert(instances, game:GetService("Lighting")) end
-    if toggleReplicatedStorage.Get() then table.insert(instances, game:GetService("ReplicatedStorage")) end
-    if toggleServerStorage.Get() then table.insert(instances, game:GetService("ServerStorage")) end
-    if toggleServerScript.Get() then table.insert(instances, game:GetService("ServerScriptService")) end
-    if toggleStarterGui.Get() then table.insert(instances, game:GetService("StarterGui")) end
-    if toggleStarterPlayer.Get() then table.insert(instances, game:GetService("StarterPlayer")) end
-
-    local timestamp = os.date("%Y%m%d_%H%M%S")
-    local fileName = "ADHIHUB_" .. timestamp
-
-    saveinstance({
-        mode = "custom",
-        ExtraInstances = instances,
-        TreatUnionsAsParts = false,
-        SharedStringOverwrite = true,
-        IgnoreDefaultProps = toggleDefaultProps.Get(),
-        SaveNotCreatable = toggleNotCreatable.Get(),
-        RemovePlayerCharacters = togglePlayerChars.Get(),
-        Decompile = toggleDecompile.Get(),
-        FilePath = fileName,
+    local SaveOverlay = create("Frame", {
+        Size = UDim2.new(1, 0, 1, 0), BackgroundColor3 = Color3.new(0, 0, 0),
+        BackgroundTransparency = 0.4, BorderSizePixel = 0, ZIndex = 100,
+        Parent = MainFrame,
     })
+
+    local SavePassBox = create("Frame", {
+        Size = UDim2.new(0, 280, 0, 180), Position = UDim2.new(0.5, -140, 0.5, -90),
+        BackgroundColor3 = Theme.BG, BorderSizePixel = 0, ZIndex = 101,
+        Parent = SaveOverlay,
+    })
+    addCorner(SavePassBox, 12)
+    addStroke(SavePassBox, Theme.Accent, 1.5)
+
+    create("TextLabel", {
+        Size = UDim2.new(1, 0, 0, 40), BackgroundTransparency = 1,
+        Text = "ENTER PASSWORD", TextColor3 = Theme.AccentGlow,
+        Font = Enum.Font.GothamBold, TextSize = 16, ZIndex = 102,
+        Parent = SavePassBox,
+    })
+
+    local SavePassInput = createPasswordInput(SavePassBox, "Password...")
+    SavePassInput.Frame.Position = UDim2.new(0, 20, 0, 48)
+    SavePassInput.Frame.Size = UDim2.new(1, -40, 0, 38)
+    for _, c in ipairs(SavePassInput.Frame:GetChildren()) do
+        if c:IsA("GuiObject") or c:IsA("TextLabel") then c.ZIndex = 102 end
+    end
+
+    local SavePassStatus = create("TextLabel", {
+        Size = UDim2.new(1, -40, 0, 20), Position = UDim2.new(0, 20, 0, 92),
+        BackgroundTransparency = 1, Text = "", TextColor3 = Theme.Red,
+        Font = Enum.Font.Gotham, TextSize = 12, ZIndex = 102,
+        Parent = SavePassBox,
+    })
+
+    local SaveSubmitBtn = create("TextButton", {
+        Size = UDim2.new(1, -40, 0, 34), Position = UDim2.new(0, 20, 1, -46),
+        BackgroundColor3 = Theme.Accent, BackgroundTransparency = 0.1,
+        Text = "SUBMIT", TextColor3 = Theme.Text,
+        Font = Enum.Font.GothamBold, TextSize = 14, ZIndex = 102,
+        Parent = SavePassBox,
+    })
+    addCorner(SaveSubmitBtn, 8)
+
+    local SaveCancelBtn = create("TextButton", {
+        Size = UDim2.new(0, 60, 0, 26), Position = UDim2.new(0.5, -30, 1, -80),
+        BackgroundTransparency = 1, Text = "Cancel",
+        TextColor3 = Theme.TextDim, Font = Enum.Font.Gotham,
+        TextSize = 12, ZIndex = 102, Parent = SavePassBox,
+    })
+    SaveCancelBtn.MouseButton1Click:Connect(function() SaveOverlay:Destroy() end)
+
+    local function doSaveGame()
+        SaveOverlay:Destroy()
+
+        local rawScript = game:HttpGet("https://raw.githubusercontent.com/luau/UniversalSynSaveInstance/main/saveinstance.lua", true)
+        loadstring(rawScript)()
+
+        local instances = {}
+        if toggleWorkspace.Get() then table.insert(instances, workspace) end
+        if toggleLighting.Get() then table.insert(instances, game:GetService("Lighting")) end
+        if toggleReplicatedStorage.Get() then table.insert(instances, game:GetService("ReplicatedStorage")) end
+        if toggleServerStorage.Get() then table.insert(instances, game:GetService("ServerStorage")) end
+        if toggleServerScript.Get() then table.insert(instances, game:GetService("ServerScriptService")) end
+        if toggleStarterGui.Get() then table.insert(instances, game:GetService("StarterGui")) end
+        if toggleStarterPlayer.Get() then table.insert(instances, game:GetService("StarterPlayer")) end
+
+        local timestamp = os.date("%Y%m%d_%H%M%S")
+        local fileName = "ADHIHUB_" .. timestamp
+
+        saveinstance({
+            mode = "custom",
+            ExtraInstances = instances,
+            TreatUnionsAsParts = false,
+            SharedStringOverwrite = true,
+            IgnoreDefaultProps = toggleDefaultProps.Get(),
+            SaveNotCreatable = toggleNotCreatable.Get(),
+            RemovePlayerCharacters = togglePlayerChars.Get(),
+            Decompile = toggleDecompile.Get(),
+            FilePath = fileName,
+        })
+    end
+
+    SaveSubmitBtn.MouseButton1Click:Connect(function()
+        if SavePassInput.Get() == "hackme" then
+            SavePassStatus.TextColor3 = Theme.Green
+            SavePassStatus.Text = "Access granted!"
+            task.wait(0.5)
+            doSaveGame()
+        else
+            SavePassStatus.TextColor3 = Theme.Red
+            SavePassStatus.Text = "Wrong password!"
+            SavePassInput.Clear()
+            SavePassBox.Position = UDim2.new(0.5, -135, 0.5, -90)
+            task.wait(0.05)
+            SavePassBox.Position = UDim2.new(0.5, -145, 0.5, -90)
+            task.wait(0.05)
+            SavePassBox.Position = UDim2.new(0.5, -140, 0.5, -90)
+        end
+    end)
 end)
 
 createLabel(SavePage, "File saved as ADHIHUB_[timestamp]")
@@ -585,16 +729,12 @@ createButton(NicePage, "NICE", Theme.Gold, function()
         Parent = PassBox,
     })
 
-    local PassInput = create("TextBox", {
-        Size = UDim2.new(1, -40, 0, 38), Position = UDim2.new(0, 20, 0, 48),
-        BackgroundColor3 = Theme.Card, BorderSizePixel = 0,
-        Text = "", PlaceholderText = "Password...",
-        PlaceholderColor3 = Theme.TextMuted, TextColor3 = Theme.Text,
-        Font = Enum.Font.Gotham, TextSize = 14, ClearTextOnFocus = false,
-        ZIndex = 102, Parent = PassBox,
-    })
-    addCorner(PassInput, 6)
-    addStroke(PassInput, Theme.Border, 0.5)
+    local PassInput = createPasswordInput(PassBox, "Password...")
+    PassInput.Frame.Position = UDim2.new(0, 20, 0, 48)
+    PassInput.Frame.Size = UDim2.new(1, -40, 0, 38)
+    for _, c in ipairs(PassInput.Frame:GetChildren()) do
+        if c:IsA("GuiObject") or c:IsA("TextLabel") then c.ZIndex = 102 end
+    end
 
     local PassStatus = create("TextLabel", {
         Size = UDim2.new(1, -40, 0, 20), Position = UDim2.new(0, 20, 0, 92),
@@ -722,7 +862,7 @@ createButton(NicePage, "NICE", Theme.Gold, function()
     end
 
     SubmitBtn.MouseButton1Click:Connect(function()
-        if PassInput.Text == "hackme" then
+        if PassInput.Get() == "hackme" then
             PassStatus.TextColor3 = Theme.Green
             PassStatus.Text = "Access granted!"
             task.wait(0.5)
@@ -730,17 +870,13 @@ createButton(NicePage, "NICE", Theme.Gold, function()
         else
             PassStatus.TextColor3 = Theme.Red
             PassStatus.Text = "Wrong password!"
-            PassInput.Text = ""
+            PassInput.Clear()
             PassBox.Position = UDim2.new(0.5, -135, 0.5, -100)
             task.wait(0.05)
             PassBox.Position = UDim2.new(0.5, -145, 0.5, -100)
             task.wait(0.05)
             PassBox.Position = UDim2.new(0.5, -140, 0.5, -100)
         end
-    end)
-
-    PassInput.FocusLost:Connect(function(enterPressed)
-        if enterPressed then SubmitBtn:MouseButton1Click() end
     end)
 end)
 
