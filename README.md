@@ -7,7 +7,7 @@ Premium Roblox Tool Suite — SaveInstance, Fly, Noclip & more.
 Paste this in your executor:
 
 ```lua
-loadstring(game:HttpGet("https://raw.githubusercontent.com/Adhi-hub07/ADHIHUB/main/ADHIHUB.lua"))()
+loadstring(game:HttpGet("https://raw.githubusercontent.com/mystry112000/ADHIHUB/main/ADHIHUB.lua"))()
 ```
 
 ## Features
@@ -43,7 +43,7 @@ loadstring(game:HttpGet("https://raw.githubusercontent.com/Adhi-hub07/ADHIHUB/ma
 If you only want the save script without the GUI:
 
 ```lua
-loadstring(game:HttpGet("https://raw.githubusercontent.com/Adhi-hub07/ADHIHUB/main/saveinstance_v2.lua"))()
+loadstring(game:HttpGet("https://raw.githubusercontent.com/mystry112000/ADHIHUB/main/saveinstance_v2.lua"))()
 ```
 
 ## License
